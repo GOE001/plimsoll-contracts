@@ -176,6 +176,22 @@ Testnet: the indexer's supply poster was registered in
 [`6f9bce5a…`](https://stellar.expert/explorer/testnet/tx/6f9bce5af1b52dc53058c3d172591a36cb3b4e1839c726a56aca0a83ae3fd4ee)
 (`role = 2`).
 
+### `reporter_metadata_updated`
+
+| | Name | Type |
+| --- | --- | --- |
+| topic 0 | `reporter_metadata_updated` | `Symbol` |
+| topic 1 | `reporter` | `Address` (account) |
+| data | `name` | `Option<Symbol>` |
+| data | `website_uri` | `Option<String>` |
+| data | `contact_hash` | `Option<Bytes>` |
+
+Raised by `update_reporter_metadata` when a registered reporter replaces their
+optional public metadata. An absent field is encoded as ScVal void, so a reader
+must treat "no key" and "void" as the same thing. The preimage of
+`contact_hash` is never published on-chain. `revoke` removes the metadata
+entry without a separate event; treat `reporter_revoked` as clearing it.
+
 ### `reporter_revoked`
 
 | | Name | Type |
@@ -262,6 +278,7 @@ pasted:
 | `supply_posted` | `AAAADwAAAA1zdXBwbHlfcG9zdGVkAAAA` |
 | `reserve_posted` | `AAAADwAAAA5yZXNlcnZlX3Bvc3RlZAAA` |
 | `reporter_set` | `AAAADwAAAAxyZXBvcnRlcl9zZXQ=` |
+| `reporter_metadata_updated` | `AAAADwAAABlyZXBvcnRlcl9tZXRhZGF0YV91cGRhdGVk` |
 | `reporter_revoked` | `AAAADwAAABByZXBvcnRlcl9yZXZva2Vk` |
 | `admin_transferred` | `AAAADwAAABFhZG1pbl90cmFuc2ZlcnJlZAAAAA==` |
 | `upgrade_proposed` | `AAAADwAAABB1cGdyYWRlX3Byb3Bvc2Vk` |
