@@ -46,6 +46,7 @@ it exists to show the integration in about 100 lines.
 | `Role` | `u32` enum | `Auditor = 1`, `Transcriber = 2`, `SupplyPoster = 3` |
 | `Tier` | `u32` enum | `Transcribed = 1`, `IssuerSigned = 2`, `AuditorSigned = 3` (ordered: higher is stronger) |
 | `ReporterInfo` | struct | `role: Role`, `name: String`, `added_at: u64` |
+| `ReporterMetadata` | struct | `name: Option<Symbol>`, `website_uri: Option<String>`, `contact_hash: Option<Bytes>` |
 | `AssetRecord` | struct | `sac: Address`, `code: String`, `issuer: Address`, `listed_at: u64` |
 | `SupplySnapshot` | struct | `amount: i128`, `ledger: u32`, `timestamp: u64`, `breakdown_hash: BytesN<32>`, `poster: Address` |
 | `ReserveReport` | struct | `amount: i128`, `as_of: u64`, `posted_at: u64`, `tier: Tier`, `reporter: Address`, `doc_hash: BytesN<32>`, `doc_uri: String` |
@@ -125,6 +126,7 @@ All three contracts use the same TTL policy, defined in `plimsoll-types`:
 | --- | --- |
 | `Admin` (instance) | `__constructor`, `transfer_admin`, `upgrade`, `set_reporter`, `revoke` |
 | `Reporter(Address)` (persistent) | `set_reporter` (write), `get_reporter` / `role_of` (read) |
+| `Metadata(Address)` (persistent) | `update_reporter_metadata` (write), `get_reporter_metadata` (read) |
 
 **coverage-ledger**
 
@@ -185,6 +187,7 @@ Decides who may speak. Holds no money.
 | --- | --- | --- |
 | `Admin` | instance | `Address` |
 | `Reporter(Address)` | persistent, TTL extended on write and read | `ReporterInfo` |
+| `Metadata(Address)` | persistent, TTL extended on write and read | `ReporterMetadata` |
 | `PendingUpgrade` | instance | `PendingUpgrade` |
 
 **Functions**
@@ -195,6 +198,8 @@ Decides who may speak. Holds no money.
 | `admin()` | — | `Address` | — | — |
 | `set_reporter(reporter: Address, role: Role, name: String)` | admin | `()` | `InvalidName` (len 0 or > 64) | `reporter_set {reporter} role, name` |
 | `revoke(reporter: Address)` | admin | `()` | `ReporterNotFound` | `reporter_revoked {reporter}` |
+| `update_reporter_metadata(reporter: Address, name: Option<Symbol>, website_uri: Option<String>, contact_hash: Option<Bytes>)` | reporter | `()` | `ReporterNotFound`, `InvalidMetadata` (URI empty or > 256 bytes; contact hash > 64 bytes) | `reporter_metadata_updated {reporter} name, website_uri, contact_hash` |
+| `get_reporter_metadata(reporter: Address)` | — | `Option<ReporterMetadata>` | — | — |
 | `role_of(reporter: Address)` | — | `Option<Role>` | — | — |
 | `get_reporter(reporter: Address)` | — | `Option<ReporterInfo>` | — | — |
 | `transfer_admin(new_admin: Address)` | admin and new_admin | `()` | — | `admin_transferred {new_admin}` |
@@ -203,7 +208,15 @@ Decides who may speak. Holds no money.
 | `cancel_upgrade()` | admin | `()` | `UpgradeNotProposed` | `upgrade_cancelled {wasm_hash}` |
 | `pending_upgrade()` | — | `Option<PendingUpgrade>` | — | — |
 
-Errors (`RegistryError`): `ReporterNotFound = 1`, `InvalidName = 2`.
+Errors (`RegistryError`): `ReporterNotFound = 1`, `InvalidName = 2`,
+`InvalidMetadata = 5`.
+
+Reporter metadata is optional and lives under its own `Metadata(Address)` key,
+not in `ReporterInfo`. A reporter registered before metadata existed therefore
+keeps its stored entry, and `get_reporter` keeps its old shape. `revoke`
+removes both entries. `update_reporter_metadata` replaces the whole metadata
+record: a `None` field clears that field, and the reporter must be registered.
+`set_reporter` does not touch metadata.
 Causes and remedies: [ERRORS.md](ERRORS.md#registryerror).
 
 ## coverage-ledger
